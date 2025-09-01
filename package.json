@@ -1,0 +1,27 @@
+{
+  "name": "express-cors-node-fetch",
+  "version": "1.0.0",
+  "description": "npm init -y",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Donlawat129/Node-Express-CORS-node-fetch.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Donlawat129/Node-Express-CORS-node-fetch/issues"
+  },
+  "homepage": "https://github.com/Donlawat129/Node-Express-CORS-node-fetch#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
+  },
+  "type": "commonjs"
+}
