@@ -1,27 +1,27 @@
 {
-  "name": "express-cors-node-fetch",
+  "name": "meter",
   "version": "1.0.0",
-  "description": "npm init -y",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
+  "private": true,
+  "description": "Express + CORS on Vercel (serverless) with static index.html",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Donlawat129/Node-Express-CORS-node-fetch.git"
+    "url": "https://github.com/Ocean104Hz/Meter"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Donlawat129/Node-Express-CORS-node-fetch/issues"
+    "url": "https://github.com/Ocean104Hz/Meter/issues"
   },
-  "homepage": "https://github.com/Donlawat129/Node-Express-CORS-node-fetch#readme",
+  "homepage": "https://github.com/Ocean104Hz/Meter#readme",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"No tests\" && exit 0"
+  },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "express": "^5.1.0"
   },
-  "type": "commonjs"
+  "engines": {
+    "node": "20.x"
+  }
 }

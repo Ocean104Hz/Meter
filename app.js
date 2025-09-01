@@ -17,6 +17,10 @@ const canvas = document.getElementById("canvas");
 let stream = null;
 let worker = null;
 
+// ====== API base (auto switch: local ↔ Vercel) ======
+const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+const API_BASE = IS_LOCAL ? "http://localhost:3000" : ""; // บน Vercel เว้นว่าง = โดเมนเดียวกัน
+
 // ====== Helper: อัปเดตสถานะ OCR ======
 function setOcrStatus(text) {
   ocrStatus.textContent = `OCR: ${text}`;
@@ -27,18 +31,17 @@ async function ensureWorker() {
   if (worker) return worker;
   setOcrStatus("loading worker...");
   worker = await Tesseract.createWorker("eng", 1, {
-    // แสดง progress ใน console
-    logger: m => {
+    logger: (m) => {
       if (m.status === "recognizing text") {
         setOcrStatus(`recognizing ${(m.progress * 100).toFixed(0)}%`);
       }
-    }
+    },
   });
 
-  // จำกัดให้ดึง “ตัวเลขเท่านั้น” เพื่อความแม่น/เร็ว
+  // จำกัดตัวเลขเพื่อความไว/แม่น
   await worker.setParameters({
     tessedit_char_whitelist: "0123456789",
-    classify_bln_numeric_mode: "1"
+    classify_bln_numeric_mode: "1",
   });
   setOcrStatus("ready");
   return worker;
@@ -51,22 +54,24 @@ btnOcrImage.addEventListener("click", async () => {
     return;
   }
   try {
-    res.textContent = ""; res.className = "";
+    res.textContent = "";
+    res.className = "";
     setOcrStatus("starting...");
     const w = await ensureWorker();
 
     const file = imgFile.files[0];
     const imageBitmap = await createImageBitmap(file);
 
-    // วาดลง canvas เพื่อส่งให้ tesseract (ช่วยควบคุมขนาด/คอนทราสต์ได้ภายหลัง)
     const c = document.createElement("canvas");
     const ctx = c.getContext("2d");
     c.width = imageBitmap.width;
     c.height = imageBitmap.height;
     ctx.drawImage(imageBitmap, 0, 0);
 
-    const { data: { text } } = await w.recognize(c);
-    const digits = (text || "").replace(/\D+/g, ""); // คัดเฉพาะตัวเลข
+    const {
+      data: { text },
+    } = await w.recognize(c);
+    const digits = (text || "").replace(/\D+/g, "");
     if (!digits) throw new Error("ไม่พบตัวเลขในภาพ");
 
     scanInput.value = digits;
@@ -83,7 +88,11 @@ btnOcrImage.addEventListener("click", async () => {
 // ====== กล้อง: เปิด/ปิด และจับภาพ ======
 btnOpenCam.addEventListener("click", async () => {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }});
+    // ต้องใช้ https บน Vercel ถึงจะเปิดกล้องได้
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
     video.srcObject = stream;
     video.style.display = "block";
     await video.play();
@@ -98,7 +107,7 @@ btnCloseCam.addEventListener("click", stopCamera);
 
 function stopCamera() {
   if (stream) {
-    stream.getTracks().forEach(t => t.stop());
+    stream.getTracks().forEach((t) => t.stop());
     stream = null;
   }
   video.pause();
@@ -111,17 +120,21 @@ function stopCamera() {
 btnCapture.addEventListener("click", async () => {
   if (!stream) return;
   try {
-    res.textContent = ""; res.className = "";
+    res.textContent = "";
+    res.className = "";
     setOcrStatus("starting...");
     const w = await ensureWorker();
 
-    // จับภาพจาก video ลง canvas
-    const wVid = video.videoWidth, hVid = video.videoHeight;
-    canvas.width = wVid; canvas.height = hVid;
+    const wVid = video.videoWidth,
+      hVid = video.videoHeight;
+    canvas.width = wVid;
+    canvas.height = hVid;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, wVid, hVid);
 
-    const { data: { text } } = await w.recognize(canvas);
+    const {
+      data: { text },
+    } = await w.recognize(canvas);
     const digits = (text || "").replace(/\D+/g, "");
     if (!digits) throw new Error("ไม่พบตัวเลขจากกล้อง");
 
@@ -139,14 +152,15 @@ btnCapture.addEventListener("click", async () => {
 // ====== ส่งฟอร์มไป Node/Apps Script ======
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  res.textContent = ""; res.className = "";
+  res.textContent = "";
+  res.className = "";
 
   const payload = {
-    name:    document.getElementById("name").value.trim(),
-    email:   document.getElementById("email").value.trim(),
+    name: document.getElementById("name").value.trim(),
+    email: document.getElementById("email").value.trim(),
     message: document.getElementById("message").value.trim(),
-    status:  document.getElementById("status").value,
-    scanNumber: scanInput.value.trim()
+    status: document.getElementById("status").value,
+    scanNumber: scanInput.value.trim(),
   };
 
   if (!payload.name || !payload.email || !payload.message || !payload.scanNumber) {
@@ -155,17 +169,20 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  btnSubmit.disabled = true; btnSubmit.textContent = "Sending…";
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = "Sending…";
 
   try {
-    const r = await fetch("http://localhost:3000/addMessage", {
+    const r = await fetch(`${API_BASE}/api/addMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
     const ct = (r.headers.get("content-type") || "").toLowerCase();
-    const data = ct.includes("application/json") ? await r.json() : { ok:false, raw: await r.text() };
+    const data = ct.includes("application/json")
+      ? await r.json()
+      : { ok: false, raw: await r.text() };
 
     if (!r.ok || data?.ok === false) {
       throw new Error(data?.error || data?.raw || "Request failed");
@@ -179,14 +196,15 @@ form.addEventListener("submit", async (e) => {
     res.textContent = "ส่งไม่สำเร็จ: " + err.message;
     res.className = "err";
   } finally {
-    btnSubmit.disabled = false; btnSubmit.textContent = "Send";
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = "Send";
     stopCamera();
   }
 });
 
 // ====== ยูทิลิตี้ ======
-function flash(el){
+function flash(el) {
   const orig = el.style.backgroundColor;
   el.style.backgroundColor = "#fff7cc";
-  setTimeout(()=> el.style.backgroundColor = orig, 300);
+  setTimeout(() => (el.style.backgroundColor = orig), 300);
 }
